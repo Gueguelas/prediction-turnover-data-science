@@ -3,10 +3,6 @@
 Você tem um modelo treinado. Alguém precisa usá-lo amanhã de manhã, todo dia,
 sem você por perto. As quatro aulas de MLOps são sobre a distância entre essas
 duas frases.
-
-**Abra o `ROTEIRO_AULA1.html` no navegador e siga por ele.** Este README é só o
-mapa da pasta.
-
 ---
 
 ## A pasta chega pela metade, de propósito
