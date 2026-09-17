@@ -38,11 +38,25 @@
   </div>
 
   <div class="filtros">
-    <input type="search" id="busca" placeholder="buscar por id ou lote…">
+    <select id="f-lote" title="filtrar por lote"><option value="todos">todos os lotes</option></select>
+    <input type="search" id="busca" placeholder="buscar por id…">
     <button class="chip ativo" data-faixa="todas">todas</button>
     <button class="chip" data-faixa="alerta">alerta</button>
     <button class="chip" data-faixa="atencao">atenção</button>
     <button class="chip" data-faixa="ok">ok</button>
+  </div>
+
+  <div id="comparar" class="comparar">
+    <div class="cmp-cab">
+      <h3>Comparação entre lotes</h3>
+      <span>contados no banco, sem truncar</span>
+    </div>
+    <table class="cmp-tbl"><thead><tr>
+      <th>lote</th><th>pessoas</th><th>versão</th>
+      <th>taxa positiva</th><th>prob. média</th>
+      <th>alerta</th><th>atenção</th><th>ok</th>
+    </tr></thead><tbody></tbody></table>
+    <p class="cmp-delta" id="cmp-delta"></p>
   </div>
 
   <div id="cards" class="cards"></div>
@@ -185,25 +199,84 @@ $('#btn-recarregar').onclick = async () => {
 };
 
 // lista de colaboradores
+// Os números NÃO são calculados aqui. Vêm do /colaboradores, contados no
+// banco com GROUP BY. A lista de cards é truncada para a tela, e qualquer
+// conta feita sobre uma lista truncada mente.
+let RESUMO = [];
+const doLote = l => RESUMO.find(r => r.lote === l);
+
+function somar(linhas) {
+  if (!linhas.length) return null;
+  const n = linhas.reduce((a, r) => a + r.n, 0);
+  return {
+    n,
+    positiva: linhas.reduce((a, r) => a + r.positiva * r.n, 0) / n,
+    media: linhas.reduce((a, r) => a + r.media * r.n, 0) / n,
+    alerta: linhas.reduce((a, r) => a + r.alerta, 0),
+    atencao: linhas.reduce((a, r) => a + r.atencao, 0),
+    ok: linhas.reduce((a, r) => a + r.ok, 0),
+  };
+}
+
 async function carregarColaboradores() {
   const d = await (await fetch('/colaboradores')).json();
   TODOS = d.colaboradores || [];
-  const conta = f => TODOS.filter(c => c.faixa === f).length;
-  $('#resumo').innerHTML = TODOS.length
-    ? `<span class="tag-alerta">${conta('alerta')} alerta</span>
-       <span class="tag-atencao">${conta('atencao')} atenção</span>
-       <span class="tag-ok">${conta('ok')} ok</span>
-       <span class="tag-total">${TODOS.length} avaliados</span>`
-    : '';
+  RESUMO = d.resumo || [];
+
+  // popula o filtro de lote preservando a escolha atual
+  const lotes = RESUMO.map(r => r.lote);
+  const sel = $('#f-lote'), antes = sel.value;
+  sel.innerHTML = '<option value="todos">todos os lotes</option>'
+    + lotes.map(l => `<option value="${l}">${l}</option>`).join('');
+  sel.value = lotes.includes(antes) || antes === 'todos' ? antes : 'todos';
+
+  // tabela de comparação: uma linha por lote, direto do resumo do banco
+  $('#comparar tbody').innerHTML = RESUMO.map(r => `
+    <tr><td>${r.lote}</td><td>${r.n}</td><td>v${r.versoes}</td>
+      <td><b>${r.positiva.toFixed(4)}</b></td><td>${r.media.toFixed(4)}</td>
+      <td class="c-alerta">${r.alerta}</td><td class="c-atencao">${r.atencao}</td>
+      <td class="c-ok">${r.ok}</td></tr>`).join('');
+  $('#comparar').style.display = RESUMO.length ? 'block' : 'none';
+
+  // com dois lotes ou mais, a diferença entre os dois últimos
+  const reais = RESUMO.filter(r => r.lote !== 'avulso');
+  if (reais.length >= 2) {
+    const a = reais[reais.length - 2], b = reais[reais.length - 1];
+    const ant = a.lote, atu = b.lote;
+    const dp = b.positiva - a.positiva;
+    $('#cmp-delta').innerHTML =
+      `<b>${atu}</b> contra <b>${ant}</b>: taxa positiva
+       ${(100 * dp).toFixed(1)} pontos ${dp < 0 ? 'abaixo' : 'acima'}
+       (${a.positiva.toFixed(4)} → ${b.positiva.toFixed(4)}),
+       ${b.alerta - a.alerta > 0 ? '+' : ''}${b.alerta - a.alerta} em alerta.`;
+    $('#cmp-delta').className = 'cmp-delta ' + (Math.abs(dp) > 0.1 ? 'aten' : '');
+  } else {
+    $('#cmp-delta').textContent = 'Envie um segundo lote para comparar.';
+    $('#cmp-delta').className = 'cmp-delta';
+  }
   desenhar();
 }
 
 function desenhar() {
   const termo = $('#busca').value.trim().toLowerCase();
+  const lote = $('#f-lote').value;
   const lista = TODOS.filter(c =>
+    (lote === 'todos' || c.lote === lote) &&
     (filtro === 'todas' || c.faixa === filtro) &&
-    (!termo || String(c.id_pessoa).toLowerCase().includes(termo)
-            || String(c.lote).toLowerCase().includes(termo)));
+    (!termo || String(c.id_pessoa).toLowerCase().includes(termo)));
+
+  // O resumo do topo acompanha o filtro de LOTE, com os números exatos do
+  // banco. Filtrar por lote e ver a taxa positiva mudar é o que permite
+  // comparar mês a mês sem sair da tela.
+  const a = somar(lote === 'todos' ? RESUMO : RESUMO.filter(r => r.lote === lote));
+  $('#resumo').innerHTML = a
+    ? `<span class="tag-alerta">${a.alerta} alerta</span>
+       <span class="tag-atencao">${a.atencao} atenção</span>
+       <span class="tag-ok">${a.ok} ok</span>
+       <span class="tag-total">${a.n} pessoas</span>
+       <span class="tag-taxa">taxa positiva ${a.positiva.toFixed(4)}</span>
+       <span class="tag-taxa">prob. média ${a.media.toFixed(4)}</span>`
+    : '';
 
   $('#vazio').style.display = lista.length ? 'none' : 'block';
   $('#vazio').textContent = TODOS.length
@@ -223,6 +296,7 @@ function desenhar() {
 }
 
 $('#busca').oninput = desenhar;
+$('#f-lote').onchange = desenhar;
 $$('.chip').forEach(b => b.onclick = () => {
   $$('.chip').forEach(x => x.classList.toggle('ativo', x === b));
   filtro = b.dataset.faixa;

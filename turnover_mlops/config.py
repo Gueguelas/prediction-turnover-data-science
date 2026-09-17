@@ -35,6 +35,12 @@ URI_BANCO_MLFLOW = uri_postgres(PG_DB_MLFLOW)
 # Onde a aplicacao guarda o log de predicoes. Banco separado, de proposito.
 URI_BANCO_APP = uri_postgres(PG_DB_APP)
 
+TABELA_VALIDACAO_ATUAL = "validacao_atual"
+
+# Ganho minimo de F1 para o candidato substituir o campeao.
+# Abaixo disso a troca nao paga o risco de mexer em producao.
+GANHO_MINIMO = 0.005
+
 # ---------------------------------------------------------------- MLflow ----
 # Onde o MLflow guarda runs, metricas e versoes de modelo.
 # E o endereco do servidor que voce sobe no terminal 1.

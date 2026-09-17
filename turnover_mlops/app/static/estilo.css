@@ -163,3 +163,26 @@ main{display:block}
        rgba(0,255,136,.3) 0%, rgba(0,255,136,.3) 50%,
        rgba(255,209,102,.35) 50%, rgba(255,209,102,.35) 60%,
        rgba(255,77,109,.35) 60%, rgba(255,77,109,.35) 100%)}
+
+/* ═══════════════════ filtro de lote e comparação ═══════════════════ */
+.filtros select{background:rgba(0,0,0,.35); border:1px solid var(--linha); border-radius:7px;
+  color:var(--text); padding:7px 10px; font-size:12.5px; font-family:'IBM Plex Mono',monospace}
+.tag-taxa{color:var(--cyan)!important; border-color:rgba(0,229,255,.3)!important;
+  background:rgba(0,229,255,.07); font-family:'IBM Plex Mono',monospace}
+.comparar{display:none; background:rgba(0,0,0,.25); border:1px solid var(--linha);
+  border-radius:10px; padding:14px 16px; margin-bottom:18px}
+.cmp-cab{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  flex-wrap:wrap; margin-bottom:10px}
+.cmp-cab h3{font-size:13px; font-weight:600}
+.cmp-cab span{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted);
+  letter-spacing:1.2px; text-transform:uppercase}
+.cmp-tbl{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:11.5px}
+.cmp-tbl th{text-align:left; color:var(--cyan); font-weight:500; padding:6px 8px;
+  border-bottom:1px solid var(--linha); white-space:nowrap}
+.cmp-tbl td{padding:7px 8px; border-bottom:1px solid rgba(0,229,255,.07); color:var(--muted)}
+.cmp-tbl td b{color:var(--text)}
+.cmp-tbl .c-alerta{color:#ff8fa3} .cmp-tbl .c-atencao{color:#ffd166} .cmp-tbl .c-ok{color:var(--green)}
+.cmp-delta{margin-top:11px; font-size:12.5px; color:var(--muted); padding-left:11px;
+  border-left:2px solid var(--linha)}
+.cmp-delta b{color:var(--text)}
+.cmp-delta.aten{border-left-color:var(--orange); color:#ffc4a8}

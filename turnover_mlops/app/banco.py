@@ -75,9 +75,16 @@ def salvar_predicoes(lote, versao, ids, probabilidades, classes, entradas):
 def carregar_lote(nome):
     """DataFrame com as features + predicoes de um lote ja pontuado."""
     with conectar() as con, con.cursor(cursor_factory=RealDictCursor) as cur:
+                # ANTES: pegava tudo, e reenviar o lote duplicava as linhas
+        #   "SELECT id_pessoa, versao_modelo, probabilidade, classe, features "
+        #   "FROM predicoes WHERE lote = %s ORDER BY id"
+
+        # DEPOIS: vale a predicao mais recente de cada pessoa
         cur.execute(
-            "SELECT id_pessoa, versao_modelo, probabilidade, classe, features "
-            "FROM predicoes WHERE lote = %s ORDER BY id", (nome,))
+            "SELECT DISTINCT ON (id_pessoa) "
+            "       id_pessoa, versao_modelo, probabilidade, classe, features "
+            "FROM predicoes WHERE lote = %s "
+            "ORDER BY id_pessoa, id DESC", (nome,))
         linhas = cur.fetchall()
     if not linhas:
         return pd.DataFrame()
@@ -124,3 +131,30 @@ def listar_lotes():
             "FROM predicoes GROUP BY lote ORDER BY quando DESC")
         return [dict(linha) | {"quando": str(linha["quando"])}
                 for linha in cur.fetchall()]
+def existe_tabela(nome):
+    """O monitorar.py usa para aceitar tabela OU nome de lote na referencia."""
+    with conectar() as con, con.cursor() as cur:
+        cur.execute("SELECT to_regclass(%s) IS NOT NULL", (nome,))
+        return cur.fetchone()[0]
+
+
+def acumular_validacao_atual(df):
+    """ANEXA um lote rotulado ao conjunto de aceitacao.
+
+    Acumula de proposito, nao substitui. Se cada mes apagasse o anterior, o
+    juiz seria sempre 100% da unidade mais recente -- e superestimaria o ganho
+    de um modelo especializado nela.
+
+    ON CONFLICT DO NOTHING: rodar o treino duas vezes nao duplica ninguem.
+    """
+    colunas = ([config.COLUNA_ID] + config.FEATURES
+               + [config.COLUNA_ALVO, "origem"])
+    linhas = [tuple(linha) for linha in df[colunas].itertuples(index=False)]
+    with conectar() as con, con.cursor() as cur:
+        execute_values(cur,
+            f"INSERT INTO {config.TABELA_VALIDACAO_ATUAL} "
+            f"({', '.join(colunas)}) VALUES %s "
+            f"ON CONFLICT ({config.COLUNA_ID}) DO NOTHING", linhas)
+        cur.execute(f"SELECT count(*) FROM {config.TABELA_VALIDACAO_ATUAL}")
+        total = cur.fetchone()[0]
+    return len(linhas), total
