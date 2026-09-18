@@ -1,8 +1,8 @@
-# turnover
-turnover analytics with data science
+# Turnover
+Notebooks com estudo em contexto com a base passada
 
-# turnover_mlops 
-making a production process to our model
+# processo de mlops
+Toda a construção da produtização dos modelos
 
 
 ## Para rodar - Faça suas adequações
